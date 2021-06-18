@@ -28,7 +28,8 @@ import static com.redsaz.lognition.model.tables.Label.LABEL;
 import static com.redsaz.lognition.model.tables.Log.LOG;
 import com.redsaz.lognition.model.tables.records.LabelRecord;
 import com.redsaz.lognition.model.tables.records.LogRecord;
-import java.io.OutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -122,7 +123,7 @@ public class JooqLogsService implements LogsService {
     }
 
     @Override
-    public OutputStream getContent(long id) {
+    public InputStream getCsvContent(long id) throws IOException {
 //        try (Connection c = POOL.getConnection()) {
 //            DSLContext context = DSL.using(c, dialect);
 //

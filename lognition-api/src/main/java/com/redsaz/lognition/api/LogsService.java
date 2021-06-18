@@ -18,7 +18,8 @@ package com.redsaz.lognition.api;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
-import java.io.OutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 
@@ -31,7 +32,7 @@ public interface LogsService {
 
     public Log create(Log source);
 
-    public OutputStream getContent(long id);
+    public InputStream getCsvContent(long id) throws IOException;
 
     public Log get(long id);
 

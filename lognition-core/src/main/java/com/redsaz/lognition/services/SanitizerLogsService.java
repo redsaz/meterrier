@@ -21,7 +21,8 @@ import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Log.Status;
-import java.io.OutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -83,8 +84,8 @@ public class SanitizerLogsService implements LogsService {
 //        return sanitize(srv.getLogBrief(id));
 //    }
     @Override
-    public OutputStream getContent(long id) {
-        return srv.getContent(id);
+    public InputStream getCsvContent(long id) throws IOException {
+        return srv.getCsvContent(id);
     }
 
 //    @Override

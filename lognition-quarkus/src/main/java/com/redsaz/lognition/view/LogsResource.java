@@ -25,6 +25,7 @@ import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Review;
 import com.redsaz.lognition.services.LabelSelectorParser;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -113,6 +114,19 @@ public class LogsResource {
             throw new NotFoundException("Could not find log brief id=" + id);
         }
         return Response.ok(brief).build();
+    }
+
+    /**
+     * Download the log data in CSV form.
+     *
+     * @param id The id of the log.
+     * @return log data.
+     */
+    @GET
+    @Produces({"text/csv"})
+    @Path("{id}/content")
+    public Response getCsvContent(@PathParam("id") long id) throws IOException {
+        return Response.ok(logsSrv.getCsvContent(id), "text/csv").build();
     }
 
     @POST
