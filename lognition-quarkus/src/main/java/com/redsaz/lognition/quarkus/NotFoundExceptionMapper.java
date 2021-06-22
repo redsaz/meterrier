@@ -53,7 +53,7 @@ public class NotFoundExceptionMapper implements ExceptionMapper<NotFoundExceptio
             return createHtmlResponse(e);
         }
         return Response.status(404)
-                .entity("")
+                .entity(new ErrorMessage("NotFound", e.getMessage()))
                 .type(MediaType.APPLICATION_JSON)
                 .build();
     }

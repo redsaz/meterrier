@@ -24,7 +24,10 @@ import com.redsaz.lognition.api.labelselector.LabelSelectorSyntaxException;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Review;
+import com.redsaz.lognition.convert.AvroToCsvJtlConverter;
 import com.redsaz.lognition.services.LabelSelectorParser;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -64,6 +67,7 @@ public class LogsResource {
     private LogsService logsSrv;
     private ImportService importSrv;
     private static final ExecutorService REVIEWS_CALC_EXEC = Executors.newSingleThreadExecutor();
+    private static final AvroToCsvJtlConverter CONVERTER = new AvroToCsvJtlConverter();
 
     public LogsResource() {
     }
@@ -126,7 +130,12 @@ public class LogsResource {
     @Produces({"text/csv"})
     @Path("{id}/content")
     public Response getCsvContent(@PathParam("id") long id) throws IOException {
-        return Response.ok(logsSrv.getCsvContent(id), "text/csv").build();
+        try {
+            File file = logsSrv.getAvroFile(id);
+            return Response.ok(CONVERTER.convertStreaming(file), "text/csv").build();
+        } catch (FileNotFoundException ex) {
+            throw new NotFoundException(ex.getMessage());
+        }
     }
 
     @POST

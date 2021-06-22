@@ -21,6 +21,8 @@ import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Log.Status;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
@@ -83,6 +85,11 @@ public class SanitizerLogsService implements LogsService {
 //    public LogBrief getLogBrief(long id) {
 //        return sanitize(srv.getLogBrief(id));
 //    }
+    @Override
+    public File getAvroFile(long id) throws FileNotFoundException {
+        return srv.getAvroFile(id);
+    }
+
     @Override
     public InputStream getCsvContent(long id) throws IOException {
         return srv.getCsvContent(id);

@@ -26,11 +26,16 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStreamWriter;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.io.BinaryDecoder;
 import org.apache.avro.io.DatumReader;
@@ -48,6 +53,16 @@ import org.slf4j.LoggerFactory;
 public class AvroToCsvJtlConverter implements Converter {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AvroToCsvJtlConverter.class);
+    private static final ExecutorService STREAM_EXEC = Executors.newCachedThreadPool();
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                STREAM_EXEC.shutdownNow();
+            }
+        });
+    }
 
     @Override
     public String convert(File source, File dest) {
@@ -84,6 +99,42 @@ public class AvroToCsvJtlConverter implements Converter {
 
         LOGGER.debug("{}ms to convert {} rows.", (System.currentTimeMillis() - startMillis), totalRows);
         return sha256Hash;
+    }
+
+    public InputStream convertStreaming(File source) throws IOException {
+        long startMillis = System.currentTimeMillis();
+        LOGGER.info("Converting {} to CSV stream...", source);
+        HttpSampleToCsvJtl h2j = new HttpSampleToCsvJtl(source);
+
+        DatumReader<HttpSample> userDatumReader = new SpecificDatumReader<>(HttpSample.class);
+
+        final PipedOutputStream pos = new PipedOutputStream();
+        final PipedInputStream pis = new PipedInputStream(pos);
+        STREAM_EXEC.execute(() -> {
+            try (DataFileReader<HttpSample> dataFileReader = new DataFileReader<>(source, userDatumReader)) {
+                long totalRows = 0;
+                CsvWriter writer = null;
+                try {
+                    writer = new CsvWriter(pos, new CsvWriterSettings());
+                    writer.writeHeaders(h2j.getUsedHeaders());
+                    while (dataFileReader.hasNext()) {
+                        HttpSample hs = dataFileReader.next();
+                        String[] row = h2j.convert(hs);
+                        writer.writeRow(row);
+                        ++totalRows;
+                    }
+                    LOGGER.info("{}ms to convert {} rows in stream.", (System.currentTimeMillis() - startMillis), totalRows);
+                } finally {
+                    if (writer != null) {
+                        writer.close();
+                    }
+                }
+            } catch (IOException ex) {
+                throw new RuntimeException("Error reading \"" + source + "\".", ex);
+            }
+        });
+
+        return pis;
     }
 
     private static class HttpSampleToCsvJtl {
