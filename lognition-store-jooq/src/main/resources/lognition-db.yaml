@@ -396,3 +396,96 @@ databaseChangeLog:
             referencedColumnNames: log_id, label_id
             constraintName: fk_code_count_sample_label
             onDelete: CASCADE
+  - changeSet:
+      id: 3
+      author: redsaz
+      changes:
+        - createTable:
+            tableName: attachment
+            columns:
+              - column:
+                  name: id
+                  type: bigint
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+              - column:
+                  name: owner
+                  type: varchar(1024)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: path
+                  type: varchar(1024)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: varchar(1024)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mime_type
+                  type: varchar(1024)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: uploaded_utc_millis
+                  type: bigint
+                  constraints:
+                    nullable: false
+        - createIndex:
+            tableName: attachment
+            indexName: idx_attachment_owner_path
+            unique: true
+            columns:
+              - column:
+                  name: owner
+              - column:
+                  name: path
+#        - createTable:
+#            tableName: log_attachment
+#            columns:
+#              - column:
+#                  name: log_id
+#                  type: bigint
+#                  constraints:
+#                    foreignKeyName: fk_log_attachment_log
+#                    references: log(id)
+#                    nullable: false
+#                    deleteCascade: true
+#              - column:
+#                  name: attachment_id
+#                  type: bigint
+#                  constraints:
+#                    foreignKeyName: fk_log_attachment_attachment
+#                    references: attachment(id)
+#                    nullable: false
+#                    deleteCascade: true
+#        - addPrimaryKey:
+#            tableName: log_attachment
+#            columnNames: log_id, attachment_id
+#            constraintName: pk_log_attachment
+#        - createTable:
+#            tableName: review_attachment
+#            columns:
+#              - column:
+#                  name: review_id
+#                  type: bigint
+#                  constraints:
+#                    foreignKeyName: fk_review_attachment_review
+#                    references: review(id)
+#                    nullable: false
+#                    deleteCascade: true
+#              - column:
+#                  name: attachment_id
+#                  type: bigint
+#                  constraints:
+#                    foreignKeyName: fk_review_attachment_attachment
+#                    references: attachment(id)
+#                    nullable: false
+#                    deleteCascade: true
+#        - addPrimaryKey:
+#            tableName: review_attachment
+#            columnNames: review_id, attachment_id
+#            constraintName: pk_review_attachment

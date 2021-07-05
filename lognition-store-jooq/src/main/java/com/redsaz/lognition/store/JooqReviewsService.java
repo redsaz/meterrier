@@ -15,8 +15,10 @@
  */
 package com.redsaz.lognition.store;
 
+import com.redsaz.lognition.api.AttachmentsService;
 import com.redsaz.lognition.api.ReviewsService;
 import com.redsaz.lognition.api.exceptions.AppServerException;
+import com.redsaz.lognition.api.model.Attachment;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Review;
 import static com.redsaz.lognition.model.tables.Log.LOG;
@@ -25,6 +27,7 @@ import static com.redsaz.lognition.model.tables.ReviewLog.REVIEW_LOG;
 import com.redsaz.lognition.model.tables.records.LogRecord;
 import com.redsaz.lognition.model.tables.records.ReviewLogRecord;
 import com.redsaz.lognition.model.tables.records.ReviewRecord;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -58,6 +61,7 @@ public class JooqReviewsService implements ReviewsService {
 
     private final ConnectionPool pool;
     private final SQLDialect dialect;
+    private final AttachmentsService attSvc;
 
     /**
      * Create a new ReviewsService backed by a data store.
@@ -65,9 +69,11 @@ public class JooqReviewsService implements ReviewsService {
      * @param jdbcPool opens connections to database
      * @param sqlDialect the type of SQL database that we should speak
      */
-    public JooqReviewsService(ConnectionPool jdbcPool, SQLDialect sqlDialect) {
+    public JooqReviewsService(ConnectionPool jdbcPool, SQLDialect sqlDialect,
+            AttachmentsService attachmentsService) {
         pool = jdbcPool;
         dialect = sqlDialect;
+        attSvc = attachmentsService;
     }
 
     @Override
@@ -135,6 +141,10 @@ public class JooqReviewsService implements ReviewsService {
 
     @Override
     public void delete(long id) {
+        // Delete any owned attac=hments first before deleting the review itself.
+        attSvc.deleteForOwner(toOwner(id));
+
+        // Now delete the review.
         try (Connection c = pool.getConnection()) {
             DSLContext context = DSL.using(c, dialect);
 
@@ -244,6 +254,48 @@ public class JooqReviewsService implements ReviewsService {
         } catch (SQLException ex) {
             throw new AppServerException("Failed to load labels for reviewId=" + reviewId, ex);
         }
+    }
+
+    @Override
+    public Attachment putAttachment(long reviewId, Attachment source, InputStream data) {
+        source = new Attachment(0, toOwner(reviewId), source.getPath(), source.getDescription(),
+                source.getMimeType(), source.getUploadedUtcMillis());
+        return attSvc.put(source, data);
+//        try (Connection c = pool.getConnection()) {
+//            DSLContext context = DSL.using(c, dialect);
+//
+//            // ERR, WAIT. SHOULD THiS BE A TABLE OF IDS? OR SHOULD IT BE REVIEW_ID, PATHNAME?
+//            // ANOTHER ERR WAIT. WHAT IF WE MADE AN OWNER COLUMN IN THE ATTACHMENT TABLE? WE COULD
+//            // FORGO THIS TRY CATCH ENTIRELY.
+//            context.insertInto(REVIEW_ATTACHMENT)
+//                    .columns(REVIEW_ATTACHMENT.REVIEW_ID, REVIEW_ATTACHMENT.ATTACHMENT_ID)
+//                    .values(reviewId, stored.getId())
+//                    .execute();
+//        } catch (SQLException ex) {
+//            throw new AppServerException("Failed to associate attachmentId=" + stored.getId()
+//                    + " with reviewId=" + reviewId, ex);
+//        }
+//
+//        return stored;
+    }
+
+    @Override
+    public InputStream getAttachmentData(long reviewId, String attachmentPath) {
+        return attSvc.getData(toOwner(reviewId), attachmentPath);
+    }
+
+    @Override
+    public List<Attachment> listAttachments(long reviewId) {
+        return attSvc.listForOwner(toOwner(reviewId));
+    }
+
+    @Override
+    public void deleteAttachment(long reviewId, String attachmentPath) {
+        attSvc.delete(toOwner(reviewId), attachmentPath);
+    }
+
+    private static String toOwner(long reviewId) {
+        return "reviews/" + reviewId;
     }
 
     private static class RecordToReviewMapper implements RecordMapper<ReviewRecord, Review> {

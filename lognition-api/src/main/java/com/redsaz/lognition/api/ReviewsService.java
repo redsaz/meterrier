@@ -15,8 +15,10 @@
  */
 package com.redsaz.lognition.api;
 
+import com.redsaz.lognition.api.model.Attachment;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Review;
+import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 
@@ -27,17 +29,40 @@ import java.util.List;
  */
 public interface ReviewsService {
 
-    public Review create(Review source);
+    Review create(Review source);
 
-    public Review get(long id);
+    Review get(long id);
 
-    public List<Review> list();
+    List<Review> list();
 
-    public Review update(Review source);
+    Review update(Review source);
 
-    public void delete(long id);
+    void delete(long id);
 
-    public void setReviewLogs(long reviewId, Collection<Long> logIds);
+    void setReviewLogs(long reviewId, Collection<Long> logIds);
 
-    public List<Log> getReviewLogs(long reviewId);
+    List<Log> getReviewLogs(long reviewId);
+
+    /**
+     * Adds a new attachment or replaces an existing attachment. If the reviewId+attachment.path
+     * combo already exist, then the attachment will be replaced.
+     *
+     * @param reviewId the owner of the attachment
+     * @param source details of the attachment
+     * @param data the attachment contents
+     * @return The resulting Attachment data.
+     */
+    Attachment putAttachment(long reviewId, Attachment source, InputStream data);
+
+    /**
+     * List all attachments for a single review.
+     *
+     * @param reviewId the owner of the attachments
+     * @return a list of attachments for the review, or an empty list if none exist.
+     */
+    List<Attachment> listAttachments(long reviewId);
+
+    InputStream getAttachmentData(long reviewId, String attachmentPath);
+
+    void deleteAttachment(long reviewId, String attachmentPath);
 }

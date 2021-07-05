@@ -15,12 +15,14 @@
  */
 package com.redsaz.lognition.store;
 
+import com.redsaz.lognition.api.AttachmentsService;
 import com.redsaz.lognition.api.LogsService;
 import com.redsaz.lognition.api.exceptions.AppClientException;
 import com.redsaz.lognition.api.exceptions.AppServerException;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpressionListener;
 import com.redsaz.lognition.api.labelselector.LabelSelectorSyntaxException;
+import com.redsaz.lognition.api.model.Attachment;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Log.Status;
@@ -75,6 +77,7 @@ public class JooqLogsService implements LogsService {
     private final ConnectionPool pool;
     private final SQLDialect dialect;
     private final String logsDir;
+    private final AttachmentsService attSvc;
 
     /**
      * Create a new LogsService backed by a data store.
@@ -83,10 +86,13 @@ public class JooqLogsService implements LogsService {
      * @param sqlDialect the type of SQL database that we should speak
      * @param logsDirectory the directory containing the logs
      */
-    public JooqLogsService(ConnectionPool jdbcPool, SQLDialect sqlDialect, String logsDirectory) {
+    public JooqLogsService(ConnectionPool jdbcPool, SQLDialect sqlDialect, String logsDirectory,
+            AttachmentsService attachmentsService
+    ) {
         pool = jdbcPool;
         dialect = sqlDialect;
         logsDir = logsDirectory;
+        attSvc = attachmentsService;
     }
 
     @Override
@@ -186,6 +192,9 @@ public class JooqLogsService implements LogsService {
 
     @Override
     public void delete(long id) {
+        // Only delete the log record after all log resources are properly cleaned up.
+        attSvc.deleteForOwner(toOwner(id));
+
         try (Connection c = pool.getConnection()) {
             DSLContext context = DSL.using(c, dialect);
 
@@ -338,6 +347,45 @@ public class JooqLogsService implements LogsService {
         } catch (SQLException ex) {
             throw new AppServerException("Failed to load labels for logId=" + logId, ex);
         }
+    }
+
+    @Override
+    public Attachment putAttachment(long logId, Attachment source, InputStream data) {
+        source = new Attachment(0, toOwner(logId), source.getPath(), source.getDescription(),
+                source.getMimeType(), source.getUploadedUtcMillis());
+        return attSvc.put(source, data);
+//    @Override
+//    public void addAttachment(long logId, long attachmentId) {
+//        try (Connection c = pool.getConnection()) {
+//            DSLContext context = DSL.using(c, dialect);
+//            context.insertInto(LOG_ATTACHMENT)
+//                    .columns(LOG_ATTACHMENT.LOG_ID, LOG_ATTACHMENT.ATTACHMENT_ID)
+//                    .values(logId, attachmentId)
+//                    .execute();
+//        } catch (SQLException ex) {
+//            throw new AppServerException("Failed to associate attachmentId=" + attachmentId
+//                    + " with logId=" + logId, ex);
+//        }
+//    }
+    }
+
+    @Override
+    public InputStream getAttachmentData(long logId, String attachmentPath) {
+        return attSvc.getData(toOwner(logId), attachmentPath);
+    }
+
+    @Override
+    public List<Attachment> listAttachments(long logId) {
+        return attSvc.listForOwner(toOwner(logId));
+    }
+
+    @Override
+    public void deleteAttachment(long logId, String attachmentPath) {
+        attSvc.delete(toOwner(logId), attachmentPath);
+    }
+
+    private static String toOwner(long logId) {
+        return "logs/" + logId;
     }
 
     private static class RecordToLogMapper implements RecordMapper<LogRecord, Log> {

@@ -76,7 +76,7 @@ public class ProcessorImportService implements ImportService {
         final ImportService saniImportSrv = new SanitizerImportService(new JooqImportService(pool, SQLDialect.HSQLDB));
         final String convertedDir = "jtls/target/logs";
         final LogsService saniLogSrv = new SanitizerLogsService(
-                new JooqLogsService(pool, SQLDialect.HSQLDB, convertedDir));
+                new JooqLogsService(pool, SQLDialect.HSQLDB, convertedDir, null));
         final StatsService jooqStatsSrv = new JooqStatsService(pool, SQLDialect.HSQLDB);
         final long now = System.currentTimeMillis();
 

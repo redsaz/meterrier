@@ -18,6 +18,7 @@ package com.redsaz.lognition.services;
 import com.github.slugify.Slugify;
 import com.redsaz.lognition.api.LogsService;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
+import com.redsaz.lognition.api.model.Attachment;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Log.Status;
@@ -159,6 +160,26 @@ public class SanitizerLogsService implements LogsService {
     @Override
     public List<Label> getLabels(long logId) {
         return srv.getLabels(logId);
+    }
+
+    @Override
+    public Attachment putAttachment(long logId, Attachment source, InputStream data) {
+        return srv.putAttachment(logId, source, data);
+    }
+
+    @Override
+    public List<Attachment> listAttachments(long logId) {
+        return srv.listAttachments(logId);
+    }
+
+    @Override
+    public InputStream getAttachmentData(long logId, String attachmentPath) {
+        return srv.getAttachmentData(logId, attachmentPath);
+    }
+
+    @Override
+    public void deleteAttachment(long logId, String attachmentPath) {
+        srv.deleteAttachment(logId, attachmentPath);
     }
 
     /**

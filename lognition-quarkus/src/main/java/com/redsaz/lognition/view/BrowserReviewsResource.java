@@ -19,6 +19,7 @@ import com.github.slugify.Slugify;
 import com.redsaz.lognition.api.LogsService;
 import com.redsaz.lognition.api.ReviewsService;
 import com.redsaz.lognition.api.StatsService;
+import com.redsaz.lognition.api.exceptions.AppClientException;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpressionFormatter;
 import com.redsaz.lognition.api.labelselector.LabelSelectorSyntaxException;
@@ -30,6 +31,7 @@ import com.redsaz.lognition.services.LabelSelectorParser;
 import com.redsaz.lognition.view.model.Chart;
 import io.vertx.core.http.HttpServerRequest;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
@@ -341,6 +343,105 @@ public class BrowserReviewsResource {
         return resp;
     }
 
+    @GET
+    @Path("{id}/attachments/{attachmentPath:.*}")
+    @Produces(MediaType.WILDCARD)
+    public Response getAttachment(@PathParam("id") long id,
+            @PathParam("attachmentPath") String attachmentPath) {
+        return Response.ok(reviewsSrv.getAttachmentData(id, attachmentPath)).build();
+//        return Response.ok(new File("lognition-data/custom/reviews/1/" + resource)).build();
+    }
+
+    /**
+     * Uploads one or more attachments for a review.
+     *
+     * @param id Identifier of the review
+     * @param input The attachment info and contents.
+     * @return A redirect response back to the review.
+     */
+    @POST
+    @Consumes("multipart/form-data")
+    @Produces({MediaType.TEXT_HTML, MediaType.APPLICATION_JSON})
+    @Path("{id}/res")
+    public Response uploadAttachments(@PathParam("id") long id, MultipartInput input) {
+        LOGGER.info("Uploading attachments for review {}", id);
+
+        /*
+        Anyway,
+        It's possible to upload a bunch of images at once, and specify the pathnames for each.
+        We should do that here, but also in the creation of the review itself.
+        And in the edit screen for the review, those attachments should be listed? Right?
+         */
+        try {
+            String filename = null;
+            ContentDispositionSubParts subParts = new ContentDispositionSubParts();
+            for (InputPart part : input.getParts()) {
+                subParts.clear();
+                String partContentDisposition = part.getHeaders().getFirst("Content-Disposition");
+                parseContentDispositionHeader(partContentDisposition, subParts);
+                switch (subParts.getName()) {
+                    case "content":
+                        try (InputStream contentStream = part.getBody(InputStream.class, null)) {
+                        LOGGER.info("Retrieving filename...");
+                        filename = subParts.getFilename();
+                        LOGGER.info("Uploading content from filename={}...", filename);
+
+                        try {
+                            sourceLog = new Log(0L, Log.Status.AWAITING_UPLOAD, null, name, null, notes);
+                            resultLog = logsSrv.create(sourceLog);
+
+                            content = importSrv.upload(contentStream, resultLog, filename, updateMillis);
+                            LOGGER.info("Uploaded content from {}.", filename);
+                            LOGGER.info("Created import_id={}.", content.getId());
+                        } catch (AppClientException ex) {
+                            if (resultLog != null) {
+                                logsSrv.delete(resultLog.getId());
+                            }
+                            throw ex;
+                        }
+                        break;
+                    } catch (IOException ex) {
+                        LOGGER.error("BAD STUFF:" + ex.getMessage(), ex);
+                        Response resp = Response.serverError().entity(ex).build();
+                        return resp;
+                    }
+                    default: {
+                        // Skip it, we don't use it.
+                        LOGGER.info("Skipped part={}", subParts.getName());
+                    }
+                    break;
+                }
+            }
+
+            if (labels != null) {
+                logsSrv.setLabels(resultLog.getId(), labels);
+            }
+
+            // If the name or notes came in AFTER the content was uploaded and the log created, then
+            // update the log's name and notes.
+            if (!Objects.equals(name, sourceLog.getName())
+                    || !Objects.equals(notes, sourceLog.getNotes())) {
+                Log updatedLog = new Log(resultLog.getId(), null, name, name, resultLog.getDataFile(), notes);
+                resultLog = logsSrv.update(updatedLog);
+            }
+
+            REVIEWS_CALC_EXEC.execute(() -> {
+                calculateAllReviewLogs();
+            });
+
+            Response resp = Response.seeOther(URI.create("logs")).build();
+            LOGGER.info("Finished uploading log {} for import", content);
+            return resp;
+        } catch (RuntimeException ex) {
+            LOGGER.error("BAD STUFF:" + ex.getMessage(), ex);
+            throw ex;
+        } finally {
+            if (input != null) {
+                input.close();
+            }
+        }
+    }
+
     /**
      * Presents a web page for viewing a specific review. The actual review displayed only really
      * depends on the review id, the URL name is optional. If the given URL name doesn't match the
@@ -377,6 +478,7 @@ public class BrowserReviewsResource {
         root.put("descriptionHtml", commonMarkToHtml(review.getDescription()));
         root.put("content", "review-view.ftl");
         root.put("reviewGraphs", reviewGraphs);
+        root.put("custom", "res/custom.jpg");
         return Response.ok(cfg.buildFromTemplate(root, "page.ftl")).build();
     }
 

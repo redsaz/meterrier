@@ -15,11 +15,13 @@
  */
 package com.redsaz.lognition.services;
 
+import com.redsaz.lognition.api.AttachmentsService;
 import com.redsaz.lognition.api.ImportService;
 import com.redsaz.lognition.api.LogsService;
 import com.redsaz.lognition.api.ReviewsService;
 import com.redsaz.lognition.api.StatsService;
 import com.redsaz.lognition.store.ConnectionPool;
+import com.redsaz.lognition.store.JooqAttachmentsService;
 import com.redsaz.lognition.store.JooqImportService;
 import com.redsaz.lognition.store.JooqLogsService;
 import com.redsaz.lognition.store.JooqReviewsService;
@@ -43,9 +45,11 @@ public class ServiceProducers {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ServiceProducers.class);
     private static final String LOGS_DIR = "./lognition-data/logs";
+    private static final String ATTACHMENTS_DIR = "./lognition-data/attachmentsDir";
     private static final ConnectionPool POOL = ConnectionPoolInit.initPool();
-    private static final LogsService SANITIZER_LOGS_SERVICE = new SanitizerLogsService(new JooqLogsService(POOL, SQLDialect.HSQLDB, LOGS_DIR));
-    private static final ReviewsService SANITIZER_REVIEWS_SERVICE = new SanitizerReviewsService(new JooqReviewsService(POOL, SQLDialect.HSQLDB));
+    private static final AttachmentsService SANITIZER_ATTACHMENTS_SERVICE = new SanitizerAttachmentsService(new JooqAttachmentsService(POOL, SQLDialect.HSQLDB, ATTACHMENTS_DIR));
+    private static final LogsService SANITIZER_LOGS_SERVICE = new SanitizerLogsService(new JooqLogsService(POOL, SQLDialect.HSQLDB, LOGS_DIR, SANITIZER_ATTACHMENTS_SERVICE));
+    private static final ReviewsService SANITIZER_REVIEWS_SERVICE = new SanitizerReviewsService(new JooqReviewsService(POOL, SQLDialect.HSQLDB, SANITIZER_ATTACHMENTS_SERVICE));
     private static final ImportService SANITIZER_IMPORT_SERVICE = new SanitizerImportService(new JooqImportService(POOL, SQLDialect.HSQLDB));
     private static final StatsService STATS_SERVICE = new JooqStatsService(POOL, SQLDialect.HSQLDB);
     private static final ProcessorImportService PROCESSOR_IMPORT_SERVICE = new ProcessorImportService(

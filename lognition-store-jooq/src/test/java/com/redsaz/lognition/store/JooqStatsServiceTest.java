@@ -54,7 +54,7 @@ public class JooqStatsServiceTest {
             // Given a log with a label,
             JooqStatsService unit = new JooqStatsService(cp, SQLDialect.HSQLDB);
             JooqLogsService logSvc = new JooqLogsService(cp, SQLDialect.HSQLDB,
-                    connectionDir.newFolder().toString());
+                    connectionDir.newFolder().toString(), null);
             Log log = new Log(1L, Status.COMPLETE, "test", "Test", "test.jtl", "notes");
             log = logSvc.create(log);
             unit.createSampleLabels(log.getId(), Collections.singletonList("overall"));
@@ -152,7 +152,7 @@ public class JooqStatsServiceTest {
         try (CloseableConnectionPool cp = createConnectionPool()) {
             JooqStatsService unit = new JooqStatsService(cp, SQLDialect.HSQLDB);
             JooqLogsService logSvc = new JooqLogsService(cp, SQLDialect.HSQLDB,
-                    connectionDir.newFolder().toString());
+                    connectionDir.newFolder().toString(), null);
             log = logSvc.create(log);
             unit.createSampleLabels(log.getId(), Arrays.asList("overall", "label1", "label2"));
 

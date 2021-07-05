@@ -41,11 +41,18 @@
       </div>
       <div class="container">
         <ul class="nav nav-tabs" role="tablist">
+          <li role="presentation" class="nav-item"><a class="graph-nav nav-link" href="#custom" aria-controls="custom" role="tab" data-toggle="tab" onclick="switchActiveNav('graph-nav', this)">custom</a></li>
         <#list reviewGraphs as g>
           <li role="presentation" class="nav-item"><a class="graph-nav nav-link<#if g?is_first> active</#if>" href="#${g.urlName}" aria-controls="${g.name}" role="tab" data-toggle="tab" onclick="switchActiveNav('graph-nav', this)">${g.name}</a></li>
         </#list>
         </ul>
         <div class="tab-content" style="width: 100%">
+          <div role="tabpanel" class="tab-pane" id="custom" style="width: 100%">
+            <h2>Custom</h2>
+            <div class="graph" style="width: 100%">
+              <img src="${custom}"/>
+            </div>
+          </div>
         <#list reviewGraphs as g>
           <div role="tabpanel" class="tab-pane <#if g?is_first>active</#if>" id="${g.urlName}" style="width: 100%">
             <h2>${g.name}</h2>

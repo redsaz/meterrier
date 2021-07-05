@@ -16,6 +16,7 @@
 package com.redsaz.lognition.api;
 
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
+import com.redsaz.lognition.api.model.Attachment;
 import com.redsaz.lognition.api.model.Label;
 import com.redsaz.lognition.api.model.Log;
 import java.io.File;
@@ -32,26 +33,49 @@ import java.util.List;
  */
 public interface LogsService {
 
-    public Log create(Log source);
+    Log create(Log source);
 
-    public InputStream getCsvContent(long id) throws IOException;
+    InputStream getCsvContent(long id) throws IOException;
 
-    public File getAvroFile(long id) throws FileNotFoundException;
+    File getAvroFile(long id) throws FileNotFoundException;
 
-    public Log get(long id);
+    Log get(long id);
 
-    public List<Log> list();
+    List<Log> list();
 
-    public List<Long> listIdsBySelector(LabelSelectorExpression labelSelector);
+    List<Long> listIdsBySelector(LabelSelectorExpression labelSelector);
 
-    public Log update(Log source);
+    Log update(Log source);
 
-    public void updateStatus(long id, Log.Status newStatus);
+    void updateStatus(long id, Log.Status newStatus);
 
-    public void delete(long id);
+    void delete(long id);
 
-    public List<Label> setLabels(long logId, Collection<Label> labels);
+    List<Label> setLabels(long logId, Collection<Label> labels);
 
-    public List<Label> getLabels(long logId);
+    List<Label> getLabels(long logId);
+
+    /**
+     * Adds a new attachment or replaces an existing attachment. If the logId+attachment.path combo
+     * already exist, then the attachment will be replaced.
+     *
+     * @param logId the owner of the attachment
+     * @param source details of the attachment
+     * @param data the attachment contents
+     * @return The resulting Attachment data.
+     */
+    Attachment putAttachment(long logId, Attachment source, InputStream data);
+
+    /**
+     * List all attachments for a single log.
+     *
+     * @param logId the owner of the attachments
+     * @return a list of attachments for the review, or an empty list if none exist.
+     */
+    List<Attachment> listAttachments(long logId);
+
+    InputStream getAttachmentData(long logId, String attachmentPath);
+
+    void deleteAttachment(long logId, String attachmentPath);
 
 }
