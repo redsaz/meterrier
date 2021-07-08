@@ -55,6 +55,15 @@ public interface ReviewsService {
     Attachment putAttachment(long reviewId, Attachment source, InputStream data);
 
     /**
+     * Updates any details of the attachment (path, description, etc, but not data).
+     *
+     * @param reviewId the owner of the attachment
+     * @param source the updated details of the attachment
+     * @return The resulting Attachment data.
+     */
+    Attachment updateAttachment(long reviewId, Attachment source);
+
+    /**
      * List all attachments for a single review.
      *
      * @param reviewId the owner of the attachments

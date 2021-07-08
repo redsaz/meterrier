@@ -118,6 +118,11 @@ public class SanitizerReviewsService implements ReviewsService {
         srv.deleteAttachment(reviewId, attachmentPath);
     }
 
+    @Override
+    public Attachment updateAttachment(long reviewId, Attachment source) {
+        return srv.updateAttachment(reviewId, source);
+    }
+
     /**
      * Ensures nothing is null. The ID will remain unchanged.
      *

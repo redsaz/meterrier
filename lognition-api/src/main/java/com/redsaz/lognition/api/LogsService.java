@@ -67,6 +67,15 @@ public interface LogsService {
     Attachment putAttachment(long logId, Attachment source, InputStream data);
 
     /**
+     * Updates any details of the attachment (path, description, etc, but not data).
+     *
+     * @param logId the owner of the attachment
+     * @param source the updated details of the attachment
+     * @return The resulting Attachment data.
+     */
+    Attachment updateAttachment(long logId, Attachment source);
+
+    /**
      * List all attachments for a single log.
      *
      * @param logId the owner of the attachments

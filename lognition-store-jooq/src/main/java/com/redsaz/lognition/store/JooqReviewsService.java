@@ -294,6 +294,13 @@ public class JooqReviewsService implements ReviewsService {
         attSvc.delete(toOwner(reviewId), attachmentPath);
     }
 
+    @Override
+    public Attachment updateAttachment(long reviewId, Attachment source) {
+        source = new Attachment(0, toOwner(reviewId), source.getPath(), source.getDescription(),
+                source.getMimeType(), source.getUploadedUtcMillis());
+        return attSvc.update(source);
+    }
+
     private static String toOwner(long reviewId) {
         return "reviews/" + reviewId;
     }

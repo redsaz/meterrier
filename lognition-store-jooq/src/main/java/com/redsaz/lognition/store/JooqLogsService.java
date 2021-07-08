@@ -370,6 +370,13 @@ public class JooqLogsService implements LogsService {
     }
 
     @Override
+    public Attachment updateAttachment(long logId, Attachment source) {
+        source = new Attachment(0, toOwner(logId), source.getPath(), source.getDescription(),
+                source.getMimeType(), source.getUploadedUtcMillis());
+        return attSvc.update(source);
+    }
+
+    @Override
     public InputStream getAttachmentData(long logId, String attachmentPath) {
         return attSvc.getData(toOwner(logId), attachmentPath);
     }

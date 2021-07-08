@@ -168,6 +168,11 @@ public class SanitizerLogsService implements LogsService {
     }
 
     @Override
+    public Attachment updateAttachment(long logId, Attachment source) {
+        return srv.updateAttachment(logId, source);
+    }
+
+    @Override
     public List<Attachment> listAttachments(long logId) {
         return srv.listAttachments(logId);
     }

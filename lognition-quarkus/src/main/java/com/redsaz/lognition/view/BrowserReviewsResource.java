@@ -19,10 +19,11 @@ import com.github.slugify.Slugify;
 import com.redsaz.lognition.api.LogsService;
 import com.redsaz.lognition.api.ReviewsService;
 import com.redsaz.lognition.api.StatsService;
-import com.redsaz.lognition.api.exceptions.AppClientException;
+import com.redsaz.lognition.api.exceptions.AppServerException;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpression;
 import com.redsaz.lognition.api.labelselector.LabelSelectorExpressionFormatter;
 import com.redsaz.lognition.api.labelselector.LabelSelectorSyntaxException;
+import com.redsaz.lognition.api.model.Attachment;
 import com.redsaz.lognition.api.model.Log;
 import com.redsaz.lognition.api.model.Percentiles;
 import com.redsaz.lognition.api.model.Review;
@@ -43,6 +44,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.function.Function;
@@ -365,6 +367,7 @@ public class BrowserReviewsResource {
     @Path("{id}/res")
     public Response uploadAttachments(@PathParam("id") long id, MultipartInput input) {
         LOGGER.info("Uploading attachments for review {}", id);
+        long uploadMillis = System.currentTimeMillis();
 
         /*
         Anyway,
@@ -373,35 +376,46 @@ public class BrowserReviewsResource {
         And in the edit screen for the review, those attachments should be listed? Right?
          */
         try {
-            String filename = null;
             ContentDispositionSubParts subParts = new ContentDispositionSubParts();
+            String path = null;
+            String description = null;
+            String mimetype = null;
+            // If any details of the attachment were changed after the file upload, then the
+            // stored attachment info needs updated to reflect it.
+            boolean changed = false;
             for (InputPart part : input.getParts()) {
                 subParts.clear();
                 String partContentDisposition = part.getHeaders().getFirst("Content-Disposition");
                 parseContentDispositionHeader(partContentDisposition, subParts);
                 switch (subParts.getName()) {
-                    case "content":
-                        try (InputStream contentStream = part.getBody(InputStream.class, null)) {
-                        LOGGER.info("Retrieving filename...");
-                        filename = subParts.getFilename();
-                        LOGGER.info("Uploading content from filename={}...", filename);
-
-                        try {
-                            sourceLog = new Log(0L, Log.Status.AWAITING_UPLOAD, null, name, null, notes);
-                            resultLog = logsSrv.create(sourceLog);
-
-                            content = importSrv.upload(contentStream, resultLog, filename, updateMillis);
-                            LOGGER.info("Uploaded content from {}.", filename);
-                            LOGGER.info("Created import_id={}.", content.getId());
-                        } catch (AppClientException ex) {
-                            if (resultLog != null) {
-                                logsSrv.delete(resultLog.getId());
-                            }
-                            throw ex;
+                    case "path":
+                        path = part.getBodyAsString();
+                        changed = true;
+                        break;
+                    case "file":
+                        try (InputStream attStream = part.getBody(InputStream.class, null)) {
+                        // If path isn't encountered yet (or doesn't exist at all) then use the
+                        // attachment filename itself for the path.
+                        String filename = subParts.getFilename();
+                        if (path == null) {
+                            path = filename;
                         }
+                        LOGGER.info("Uploading attachment from filename={}...", filename);
+                        mimetype = Optional.ofNullable(part.getMediaType())
+                                .orElse(MediaType.WILDCARD_TYPE)
+                                .toString();
+
+                        Attachment source = new Attachment(0, "", path, description, mimetype, uploadMillis);
+                        Attachment result = reviewsSrv.putAttachment(id, source, attStream);
+
+                        // If "file" was the last part uploaded, then the attachment details do not
+                        // need changed.
+                        changed = false;
+
+                        LOGGER.info("Uploaded {}", result);
                         break;
                     } catch (IOException ex) {
-                        LOGGER.error("BAD STUFF:" + ex.getMessage(), ex);
+                        LOGGER.error("Could not upload/save attachment because " + ex.getMessage(), ex);
                         Response resp = Response.serverError().entity(ex).build();
                         return resp;
                     }
@@ -413,25 +427,16 @@ public class BrowserReviewsResource {
                 }
             }
 
-            if (labels != null) {
-                logsSrv.setLabels(resultLog.getId(), labels);
+            if (changed) {
+                Attachment source = new Attachment(0, "", path, description, mimetype, uploadMillis);
+                reviewsSrv.updateAttachment(id, source);
             }
 
-            // If the name or notes came in AFTER the content was uploaded and the log created, then
-            // update the log's name and notes.
-            if (!Objects.equals(name, sourceLog.getName())
-                    || !Objects.equals(notes, sourceLog.getNotes())) {
-                Log updatedLog = new Log(resultLog.getId(), null, name, name, resultLog.getDataFile(), notes);
-                resultLog = logsSrv.update(updatedLog);
-            }
-
-            REVIEWS_CALC_EXEC.execute(() -> {
-                calculateAllReviewLogs();
-            });
-
-            Response resp = Response.seeOther(URI.create("logs")).build();
-            LOGGER.info("Finished uploading log {} for import", content);
-            return resp;
+            return Response.seeOther(URI.create("reviews/" + id)).build();
+        } catch (IOException ex) {
+            String message = "Unable to read uploaded attachment.";
+            LOGGER.error(message, ex);
+            throw new AppServerException(message, ex);
         } catch (RuntimeException ex) {
             LOGGER.error("BAD STUFF:" + ex.getMessage(), ex);
             throw ex;
